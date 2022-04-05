@@ -590,6 +590,10 @@ bool kgd2kfd_device_init(struct kfd_dev *kfd,
 
 	kfd->dbgmgr = NULL;
 
+	/* release kfd lock b/o pcie hotplug out  */
+	if (kfd_is_locked())
+		atomic_dec(&kfd_locked);
+
 	if (kfd_topology_add_device(kfd)) {
 		dev_err(kfd_device, "Error adding device to topology\n");
 		goto kfd_topology_add_device_error;

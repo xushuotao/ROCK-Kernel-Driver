@@ -132,6 +132,32 @@ struct kfd_dev *kfd_device_by_adev(const struct amdgpu_device *adev)
 	return device;
 }
 
+static void kfd_release_link_prop(struct kfd_topology_device *dev, uint32_t node_id)
+{
+	struct kfd_iolink_properties *iolink, *tmp;
+	struct kfd_iolink_properties *p2plink;
+
+	list_for_each_entry_safe(iolink, tmp, &dev->io_link_props, list) {
+		if (iolink->node_to == node_id) {
+			pr_debug("%s, io_link from_node = %d, to_node = %d", __func__, iolink->node_from, iolink->node_to);
+			list_del(&iolink->list);
+			kfree(iolink);
+			dev->node_props.io_links_count--;
+		}
+	}
+
+	list_for_each_entry_safe(p2plink, tmp, &dev->p2p_link_props, list) {
+		if (p2plink->node_to == node_id) {
+			pr_debug("%s, p2p_link from_node = %d, to_node = %d", __func__, p2plink->node_from, p2plink->node_to);
+			list_del(&p2plink->list);
+			kfree(p2plink);
+			dev->node_props.p2p_links_count--;
+
+		}
+	}
+
+}
+
 /* Called with write topology_lock acquired */
 static void kfd_release_topology_device(struct kfd_topology_device *dev)
 {
@@ -591,6 +617,33 @@ static void kfd_remove_sysfs_file(struct kobject *kobj, struct attribute *attr)
 	sysfs_remove_file(kobj, attr);
 	kobject_del(kobj);
 	kobject_put(kobj);
+}
+
+
+static void kfd_remove_sysfs_link_to(struct kfd_topology_device *dev, uint32_t node_id)
+{
+	struct kfd_iolink_properties *p2plink;
+	struct kfd_iolink_properties *iolink;
+
+	if (dev->kobj_p2plink) {
+		list_for_each_entry(p2plink, &dev->p2p_link_props, list)
+			if (p2plink->kobj && p2plink->node_to == node_id) {
+				pr_debug("%s, p2p_link from_node = %d, to_node = %d", __func__, p2plink->node_from, p2plink->node_to);
+				kfd_remove_sysfs_file(p2plink->kobj,
+									  &p2plink->attr);
+				p2plink->kobj = NULL;
+			}
+	}
+
+	if (dev->kobj_iolink) {
+		list_for_each_entry(iolink, &dev->io_link_props, list)
+			if (iolink->kobj && iolink->node_to == node_id) {
+				pr_debug("%s, io_link from_node = %d, to_node = %d", __func__, iolink->node_from, iolink->node_to);
+				kfd_remove_sysfs_file(iolink->kobj,
+									  &iolink->attr);
+				iolink->kobj = NULL;
+			}
+	}
 }
 
 static void kfd_remove_sysfs_node_entry(struct kfd_topology_device *dev)
@@ -1598,6 +1651,7 @@ static int kfd_dev_create_p2p_links(void)
 	k = 0;
 	list_for_each_entry(dev, &topology_device_list, list)
 		k++;
+
 	if (k < 2)
 		return 0;
 
@@ -1886,20 +1940,35 @@ int kfd_topology_remove_device(struct kfd_dev *gpu)
 	struct kfd_topology_device *dev, *tmp;
 	uint32_t gpu_id;
 	int res = -ENODEV;
+	uint32_t node_id = 0;
+	bool found = false;
 
 	down_write(&topology_lock);
 
-	list_for_each_entry_safe(dev, tmp, &topology_device_list, list)
+	list_for_each_entry_safe(dev, tmp, &topology_device_list, list) {
 		if (dev->gpu == gpu) {
 			gpu_id = dev->gpu_id;
 			kfd_remove_sysfs_node_entry(dev);
 			kfd_release_topology_device(dev);
 			sys_props.num_devices--;
 			res = 0;
-			if (kfd_topology_update_sysfs() < 0)
-				kfd_topology_release_sysfs();
+			pr_debug("kfd_topology: removing gpu node, node id = %d", node_id);
+			found = true;
 			break;
+
 		}
+		node_id++;
+	}
+
+	if (found) {
+		list_for_each_entry(dev, &topology_device_list, list) {
+			kfd_remove_sysfs_link_to(dev, node_id);
+			kfd_release_link_prop(dev, node_id);
+		}
+		atomic_dec(&topology_crat_proximity_domain);
+		if (kfd_topology_update_sysfs() < 0)
+			kfd_topology_release_sysfs();
+	}
 
 	up_write(&topology_lock);
 
