@@ -590,10 +590,6 @@ bool kgd2kfd_device_init(struct kfd_dev *kfd,
 
 	kfd->dbgmgr = NULL;
 
-	/* release kfd lock b/o pcie hotplug out  */
-	if (kfd_is_locked())
-		atomic_dec(&kfd_locked);
-
 	if (kfd_topology_add_device(kfd)) {
 		dev_err(kfd_device, "Error adding device to topology\n");
 		goto kfd_topology_add_device_error;
@@ -731,6 +727,19 @@ int kgd2kfd_resume(struct kfd_dev *kfd, bool run_pm, bool sync)
 	}
 
 	return ret;
+}
+
+/* for non-runtime resume only */
+int kgd2kfd_resume_processes(void)
+{
+	int count;
+
+	count = atomic_dec_return(&kfd_locked);
+	WARN_ONCE(count < 0, "KFD suspend / resume ref. error");
+	if (count == 0)
+		return kfd_resume_all_processes(true);
+
+	return 0;
 }
 
 int kgd2kfd_resume_iommu(struct kfd_dev *kfd)

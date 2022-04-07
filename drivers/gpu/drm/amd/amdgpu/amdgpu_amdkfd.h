@@ -144,6 +144,7 @@ void amdgpu_amdkfd_fini(void);
 void amdgpu_amdkfd_suspend(struct amdgpu_device *adev, bool run_pm);
 int amdgpu_amdkfd_resume_iommu(struct amdgpu_device *adev);
 int amdgpu_amdkfd_resume(struct amdgpu_device *adev, bool run_pm, bool sync);
+int amdgpu_amdkfd_resume_processes(void);
 void amdgpu_amdkfd_interrupt(struct amdgpu_device *adev,
 			const void *ih_ring_entry);
 void amdgpu_amdkfd_device_probe(struct amdgpu_device *adev);
@@ -407,6 +408,7 @@ void kgd2kfd_device_exit(struct kfd_dev *kfd);
 void kgd2kfd_suspend(struct kfd_dev *kfd, bool run_pm, bool force);
 int kgd2kfd_resume_iommu(struct kfd_dev *kfd);
 int kgd2kfd_resume(struct kfd_dev *kfd, bool run_pm, bool sync);
+int kgd2kfd_resume_processes(void);
 int kgd2kfd_pre_reset(struct kfd_dev *kfd);
 int kgd2kfd_post_reset(struct kfd_dev *kfd);
 void kgd2kfd_interrupt(struct kfd_dev *kfd, const void *ih_ring_entry);
@@ -449,6 +451,10 @@ static int __maybe_unused kgd2kfd_resume_iommu(struct kfd_dev *kfd)
 }
 
 static inline int kgd2kfd_resume(struct kfd_dev *kfd, bool run_pm, bool sync)
+{
+	return 0;
+}
+static inline int kgd2kfd_resume_processes(void)
 {
 	return 0;
 }

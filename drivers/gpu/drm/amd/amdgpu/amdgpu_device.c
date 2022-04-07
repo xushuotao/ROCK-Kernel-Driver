@@ -3999,6 +3999,9 @@ void amdgpu_device_fini_hw(struct amdgpu_device *adev)
 	amdgpu_gart_dummy_page_fini(adev);
 
 	amdgpu_device_unmap_mmio(adev);
+
+	/* release kfd_locked and resume kfd processses after hw fini */
+	amdgpu_amdkfd_resume_processes();
 }
 
 void amdgpu_device_fini_sw(struct amdgpu_device *adev)

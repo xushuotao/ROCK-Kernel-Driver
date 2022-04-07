@@ -1939,38 +1939,71 @@ int kfd_topology_remove_device(struct kfd_dev *gpu)
 {
 	struct kfd_topology_device *dev, *tmp;
 	uint32_t gpu_id;
-	int res = -ENODEV;
-	uint32_t node_id = 0;
+	int res = -ENODEV, res2;
+	int proximity_domain;
 	bool found = false;
+	struct kfd_dev_node {
+		struct list_head list;
+		struct kfd_dev *gpu;
+	};
+	struct kfd_dev_node *node, *temp_node;
+	struct list_head temp_list;
+
+	INIT_LIST_HEAD(&temp_list);
 
 	down_write(&topology_lock);
 
-	list_for_each_entry_safe(dev, tmp, &topology_device_list, list) {
+	/* For hotplug support!
+	 *
+	 * 1. Reverse enumerate all nodes in descending node id order
+	 * until the gpu node to be removed is found.
+	 *
+	 * 2. Prior to locating the target node, temporarily remove nodes
+	 * in the kfd topology, and put them in an temp_list. After target
+	 * nodes are found, add nodes that were temparily removed are
+	 * added back in the topology.
+	 *
+	 * This method is devised due to the way that the atomic counter
+	 * topology_crat_proximity_domain is used in the code.
+	 */
+	list_for_each_entry_safe_reverse(dev, tmp, &topology_device_list, list) {
 		if (dev->gpu == gpu) {
 			gpu_id = dev->gpu_id;
-			kfd_remove_sysfs_node_entry(dev);
-			kfd_release_topology_device(dev);
-			sys_props.num_devices--;
+			pr_debug("kfd_topology: found target gpu node, gpu_id = %d", gpu_id);
 			res = 0;
-			pr_debug("kfd_topology: removing gpu node, node id = %d", node_id);
 			found = true;
-			break;
-
+		} else {
+			node = kfd_alloc_struct(node);
+			node->gpu = dev->gpu;
+			list_add(&node->list, &temp_list);
 		}
-		node_id++;
-	}
+		proximity_domain = dev->proximity_domain;
+		kfd_remove_sysfs_node_entry(dev);
+		kfd_release_topology_device(dev);
+		sys_props.num_devices--;
+		pr_debug("kfd_topology: removing gpu node, proximity_domain = %d", proximity_domain);
 
-	if (found) {
+		/* enumerate existing nodes for redudant iolink removal */
 		list_for_each_entry(dev, &topology_device_list, list) {
-			kfd_remove_sysfs_link_to(dev, node_id);
-			kfd_release_link_prop(dev, node_id);
+			kfd_remove_sysfs_link_to(dev, proximity_domain);
+			kfd_release_link_prop(dev, proximity_domain);
 		}
 		atomic_dec(&topology_crat_proximity_domain);
+
 		if (kfd_topology_update_sysfs() < 0)
 			kfd_topology_release_sysfs();
-	}
 
+		if (found)
+			break;
+	}
 	up_write(&topology_lock);
+
+	list_for_each_entry_safe(node, temp_node, &temp_list, list) {
+		res2 = kfd_topology_add_device(node->gpu);
+		pr_debug("kfd_topology_add_device, res2 = %d", res2);
+		list_del(&node->list);
+		kfree(node);
+	}
 
 	if (!res)
 		kfd_notify_gpu_change(gpu_id, 0);
