@@ -2101,6 +2101,9 @@ amdgpu_pci_remove(struct pci_dev *pdev)
 {
 	struct drm_device *dev = pci_get_drvdata(pdev);
 
+	/* kill all kfd processes before drm_dev_unplug */
+	amdgpu_amdkfd_kill_all_processes(drm_to_adev(dev));
+
 #ifdef HAVE_DRM_DEV_UNPLUG
 	drm_dev_unplug(dev);
 #else
