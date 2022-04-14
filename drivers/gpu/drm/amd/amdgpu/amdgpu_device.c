@@ -2765,17 +2765,12 @@ static void amdgpu_device_smu_fini_early(struct amdgpu_device *adev)
 static int amdgpu_device_ip_fini_early(struct amdgpu_device *adev)
 {
 	int i, r;
-	pr_debug("%s enter ip_blocks = %d\n", __func__, adev->num_ip_blocks);
 
 	for (i = 0; i < adev->num_ip_blocks; i++) {
 		if (!adev->ip_blocks[i].version->funcs->early_fini)
 			continue;
-		
-		r = adev->ip_blocks[i].version->funcs->early_fini((void *)adev);
-		
-		pr_debug("early_fini of IP block <%s> done %d\n",
-				  adev->ip_blocks[i].version->funcs->name, r);
 
+		r = adev->ip_blocks[i].version->funcs->early_fini((void *)adev);
 		if (r) {
 			DRM_DEBUG("early_fini of IP block <%s> failed %d\n",
 				  adev->ip_blocks[i].version->funcs->name, r);
@@ -2783,7 +2778,6 @@ static int amdgpu_device_ip_fini_early(struct amdgpu_device *adev)
 	}
 
 	amdgpu_amdkfd_suspend(adev, false);
-	pr_debug("amdgpu_amdkfd_suspend(adev, false) done\n");
 
 	amdgpu_device_set_pg_state(adev, AMD_PG_STATE_UNGATE);
 	amdgpu_device_set_cg_state(adev, AMD_CG_STATE_UNGATE);
@@ -2797,9 +2791,6 @@ static int amdgpu_device_ip_fini_early(struct amdgpu_device *adev)
 
 		r = adev->ip_blocks[i].version->funcs->hw_fini((void *)adev);
 		/* XXX handle errors */
-		pr_debug("hw_fini of IP block[%d] <%s> done %d\n", i,
-				 adev->ip_blocks[i].version->funcs->name, r);
-
 		if (r) {
 			DRM_DEBUG("hw_fini of IP block <%s> failed %d\n",
 				  adev->ip_blocks[i].version->funcs->name, r);
@@ -2811,10 +2802,7 @@ static int amdgpu_device_ip_fini_early(struct amdgpu_device *adev)
 	if (amdgpu_sriov_vf(adev)) {
 		if (amdgpu_virt_release_full_gpu(adev, false))
 			DRM_ERROR("failed to release exclusive mode on fini\n");
-
-		pr_debug("%s virt_release done\n", __func__);
 	}
-
 
 	return 0;
 }
@@ -3962,7 +3950,6 @@ static void amdgpu_device_unmap_mmio(struct amdgpu_device *adev)
  */
 void amdgpu_device_fini_hw(struct amdgpu_device *adev)
 {
-	int i = 0;
 	dev_info(adev->dev, "amdgpu: finishing device.\n");
 	flush_delayed_work(&adev->delayed_init_work);
 	if (adev->mman.initialized) {
@@ -4001,20 +3988,17 @@ void amdgpu_device_fini_hw(struct amdgpu_device *adev)
 	amdgpu_fbdev_fini(adev);
 #endif
 	/* disable ras feature must before hw fini */
-
-	pr_debug("%d\n", i++); //0
 	amdgpu_ras_pre_fini(adev);
-	pr_debug("%d\n", i++); //1
+
 	amdgpu_device_ip_fini_early(adev);
-	pr_debug("%d\n", i++); //2
+
 	amdgpu_irq_fini_hw(adev);
-	pr_debug("%d\n", i++);
+
 	ttm_device_clear_dma_mappings(&adev->mman.bdev);
-	pr_debug("%d\n", i++);
+
 	amdgpu_gart_dummy_page_fini(adev);
-	pr_debug("%d\n", i++);
+
 	amdgpu_device_unmap_mmio(adev);
-	pr_debug("%d\n", i++);
 }
 
 void amdgpu_device_fini_sw(struct amdgpu_device *adev)

@@ -2199,7 +2199,7 @@ static void restore_process_worker(struct work_struct *work)
 void kfd_kill_all_user_processes(void)
 {
 	struct kfd_process *p;
-	struct amdkfd_process_info *p_info;
+	/* struct amdkfd_process_info *p_info; */
 	unsigned int temp;
 	int idx;
 	atomic_inc(&kfd_process_locked);
@@ -2207,8 +2207,6 @@ void kfd_kill_all_user_processes(void)
 	idx = srcu_read_lock(&kfd_processes_srcu);
 	pr_info("Killing all processes\n");
 	hash_for_each_rcu(kfd_processes_table, temp, p, kfd_processes) {
-		p_info = p->kgd_process_info;
-		cancel_delayed_work_sync(&p_info->restore_userptr_work);
 		dev_warn(kfd_device,
 				 "Sending SIGBUS to process %d (pasid 0x%x)",
 				 p->lead_thread->pid, p->pasid);

@@ -2103,8 +2103,6 @@ amdgpu_pci_remove(struct pci_dev *pdev)
 
 	/* kill all kfd processes before drm_dev_unplug */
 	amdgpu_amdkfd_kill_all_processes(drm_to_adev(dev));
-	pr_info("sleep for 5s");
-	msleep(5000);
 
 #ifdef HAVE_DRM_DEV_UNPLUG
 	drm_dev_unplug(dev);
@@ -2112,7 +2110,6 @@ amdgpu_pci_remove(struct pci_dev *pdev)
 	drm_dev_unregister(dev);
 #endif
 	amdgpu_driver_unload_kms(dev);
-	pr_debug("amdgpu_driver_unload_kms done\n");
 
 	/*
 	 * Flush any in flight DMA operations from device.
@@ -2120,16 +2117,11 @@ amdgpu_pci_remove(struct pci_dev *pdev)
 	 * StatusTransactions Pending bit.
 	 */
 	kcl_pci_remove_measure_file(pdev);
-	pr_debug("kcl_pci_remove_measure_file done\n");
 	pci_disable_device(pdev);
-	pr_debug("pci_disable_device done\n");
 	pci_wait_for_pending_transaction(pdev);
-	pr_debug("pci_wait_for_pending_transaction done\n");
 #ifdef AMDKCL_DEVM_DRM_DEV_ALLOC
 	amdkcl_drm_dev_release(dev);
-	pr_debug("amdkcl_drm_dev_release done\n");
 #endif
-	pr_debug("amd_pci_remove done\n");
 }
 
 #ifdef HAVE_DRM_DRIVER_RELEASE
