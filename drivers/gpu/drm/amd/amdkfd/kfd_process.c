@@ -46,6 +46,9 @@ struct mm_struct;
 #include "kfd_trace.h"
 #include "kfd_debug.h"
 
+static atomic_t kfd_process_locked = ATOMIC_INIT(0);
+static atomic_t kfd_inflight_kills = ATOMIC_INIT(0);
+
 /*
  * List of struct kfd_process (field kfd_process).
  * Unique/indexed by mm_struct*
@@ -802,6 +805,9 @@ struct kfd_process *kfd_create_process(struct task_struct *thread)
 	struct kfd_process *process;
 	int ret;
 
+	if ( atomic_read(&kfd_process_locked) > 0 )
+		return ERR_PTR(-EINVAL);
+
 	if (!(thread->mm && mmget_not_zero(thread->mm)))
 		return ERR_PTR(-EINVAL);
 
@@ -1126,6 +1132,10 @@ static void kfd_process_wq_release(struct work_struct *work)
 	put_task_struct(p->lead_thread);
 
 	kfree(p);
+
+	if ( atomic_read(&kfd_process_locked) > 0 ){
+		atomic_dec(&kfd_inflight_kills);
+	}
 }
 
 static void kfd_process_ref_release(struct kref *ref)
@@ -2184,6 +2194,35 @@ static void restore_process_worker(struct work_struct *work)
 		pr_debug("Finished restoring pasid 0x%x\n", p->pasid);
 	else
 		pr_err("Failed to restore queues of pasid 0x%x\n", p->pasid);
+}
+
+void kfd_kill_all_user_processes(void)
+{
+	struct kfd_process *p;
+	/* struct amdkfd_process_info *p_info; */
+	unsigned int temp;
+	int idx;
+	atomic_inc(&kfd_process_locked);
+
+	idx = srcu_read_lock(&kfd_processes_srcu);
+	pr_info("Killing all processes\n");
+	hash_for_each_rcu(kfd_processes_table, temp, p, kfd_processes) {
+		dev_warn(kfd_device,
+				 "Sending SIGBUS to process %d (pasid 0x%x)",
+				 p->lead_thread->pid, p->pasid);
+		send_sig(SIGBUS, p->lead_thread, 0);
+		atomic_inc(&kfd_inflight_kills);
+	}
+	srcu_read_unlock(&kfd_processes_srcu, idx);
+
+	while ( atomic_read(&kfd_inflight_kills) > 0 ){
+		dev_warn(kfd_device,
+				 "kfd_processes_table is not empty, going to sleep for 10ms\n");
+		msleep(10);
+	}
+
+	atomic_dec(&kfd_process_locked);
+	pr_info("all processes has been fully released");
 }
 
 void kfd_suspend_all_processes(bool force)

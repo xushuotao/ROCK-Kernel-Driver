@@ -691,6 +691,12 @@ bool kfd_is_locked(void)
 	return  (atomic_read(&kfd_locked) > 0);
 }
 
+inline void kgd2kfd_kill_all_user_processes(struct kfd_dev* dev)
+{
+	kfd_kill_all_user_processes();
+}
+
+
 void kgd2kfd_suspend(struct kfd_dev *kfd, bool run_pm, bool force)
 {
 	if (!kfd->init_complete)
