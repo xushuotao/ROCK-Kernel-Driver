@@ -96,7 +96,9 @@ void amdgpu_driver_unload_kms(struct drm_device *dev)
 		DRM_WARN("smart shift update failed\n");
 
 	amdgpu_acpi_fini(adev);
+	pr_debug("amdgpu_acpi_fini done\n");
 	amdgpu_device_fini_hw(adev);
+	pr_debug("amdgpu_device_fini_hw done\n");
 }
 
 void amdgpu_register_gpu_instance(struct amdgpu_device *adev)
