@@ -2206,6 +2206,24 @@ void kfd_suspend_all_processes(bool force)
 	srcu_read_unlock(&kfd_processes_srcu, idx);
 }
 
+
+void kfd_kill_all_user_processes(void)
+{
+	struct kfd_process *p;
+	struct amdkfd_process_info *p_info;
+	unsigned int temp;
+	int idx = srcu_read_lock(&kfd_processes_srcu);
+
+	pr_info("Killing all processes\n");
+	hash_for_each_rcu(kfd_processes_table, temp, p, kfd_processes) {
+		p_info = p->kgd_process_info;
+		pr_info("Killing  processes, pid = %d", pid_nr(p_info->pid));
+		kill_pid(p_info->pid, SIGBUS, 1);
+	}
+	srcu_read_unlock(&kfd_processes_srcu, idx);
+}
+
+
 int kfd_resume_all_processes(bool sync)
 {
 	struct kfd_process *p;

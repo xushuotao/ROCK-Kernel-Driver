@@ -703,6 +703,9 @@ void kgd2kfd_suspend(struct kfd_dev *kfd, bool run_pm, bool force)
 			kfd_suspend_all_processes(force);
 	}
 
+	if (drm_dev_is_unplugged(kfd->ddev))
+		kfd_kill_all_user_processes();
+
 	kfd->dqm->ops.stop(kfd->dqm);
 	kfd_iommu_suspend(kfd);
 }

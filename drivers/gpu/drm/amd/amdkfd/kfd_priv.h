@@ -1065,6 +1065,7 @@ void kfd_unref_process(struct kfd_process *p);
 int kfd_process_evict_queues(struct kfd_process *p, bool force);
 int kfd_process_restore_queues(struct kfd_process *p);
 void kfd_suspend_all_processes(bool force);
+void kfd_kill_all_user_processes(void);
 /*
  * kfd_resume_all_processes:
  *	bool sync: If kfd_resume_all_processes() should wait for the
