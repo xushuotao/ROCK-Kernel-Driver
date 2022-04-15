@@ -188,12 +188,6 @@ void amdgpu_amdkfd_interrupt(struct amdgpu_device *adev,
 		kgd2kfd_interrupt(adev->kfd.dev, ih_ring_entry);
 }
 
-void amdgpu_amdkfd_kill_all_processes(struct amdgpu_device *adev)
-{
-	if (adev->kfd.dev)
-		kgd2kfd_kill_all_user_processes(adev->kfd.dev);
-}
-
 void amdgpu_amdkfd_suspend(struct amdgpu_device *adev, bool run_pm)
 {
 	if (adev->kfd.dev)
