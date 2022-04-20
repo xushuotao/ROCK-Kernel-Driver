@@ -1324,6 +1324,7 @@ static int init_kfd_vm(struct amdgpu_vm *vm, void **process_info,
 		}
 
 		info->pid = get_task_pid(current->group_leader, PIDTYPE_PID);
+		atomic_set(&info->invalid, 0);
 		atomic_set(&info->evicted_bos, 0);
 		INIT_DELAYED_WORK(&info->restore_userptr_work,
 				  amdgpu_amdkfd_restore_userptr_worker);
@@ -2692,7 +2693,11 @@ static void amdgpu_amdkfd_restore_userptr_worker(struct work_struct *work)
 	struct task_struct *usertask;
 	struct mm_struct *mm;
 	int evicted_bos;
+	/* struct drm_device *ddev = bo->base.dev */
 
+	if (atomic_read(&process_info->invalid))
+		return;
+	
 	evicted_bos = atomic_read(&process_info->evicted_bos);
 	if (!evicted_bos)
 		return;

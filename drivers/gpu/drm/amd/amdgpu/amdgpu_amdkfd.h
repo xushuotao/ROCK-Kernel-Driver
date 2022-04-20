@@ -134,6 +134,7 @@ struct amdkfd_process_info {
 
 	/* MMU-notifier related fields */
 	atomic_t evicted_bos;
+	atomic_t invalid;
 	struct delayed_work restore_userptr_work;
 	struct pid *pid;
 };

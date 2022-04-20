@@ -1054,6 +1054,7 @@ void amdgpu_device_program_register_sequence(struct amdgpu_device *adev,
  */
 void amdgpu_device_pci_config_reset(struct amdgpu_device *adev)
 {
+	pr_debug("%s called\n",__func__);
 	pci_write_config_dword(adev->pdev, 0x7c, AMDGPU_ASIC_RESET_DATA);
 }
 
@@ -1066,6 +1067,7 @@ void amdgpu_device_pci_config_reset(struct amdgpu_device *adev)
  */
 int amdgpu_device_pci_reset(struct amdgpu_device *adev)
 {
+	pr_debug("%s called\n",__func__);
 	return pci_reset_function(adev->pdev);
 }
 
@@ -4701,6 +4703,8 @@ int amdgpu_do_asic_reset(struct list_head *device_list_handle,
 	struct amdgpu_device *tmp_adev = NULL;
 	bool need_full_reset, skip_hw_reset, vram_lost = false;
 	int r = 0;
+
+	pr_debug("%s called\n",__func__);
 
 	/* Try reset handler method first */
 	tmp_adev = list_first_entry(device_list_handle, struct amdgpu_device,

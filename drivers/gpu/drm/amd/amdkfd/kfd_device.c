@@ -693,6 +693,10 @@ bool kfd_is_locked(void)
 
 void kgd2kfd_suspend(struct kfd_dev *kfd, bool run_pm, bool force)
 {
+	struct kfd_process *p;
+	struct amdkfd_process_info *p_info;
+	unsigned int temp;
+
 	if (!kfd->init_complete)
 		return;
 
@@ -701,6 +705,21 @@ void kgd2kfd_suspend(struct kfd_dev *kfd, bool run_pm, bool force)
 		/* For first KFD device suspend all the KFD processes */
 		if (atomic_inc_return(&kfd_locked) == 1)
 			kfd_suspend_all_processes(force);
+	}
+
+	if (drm_dev_is_unplugged(kfd->ddev)){
+		int idx = srcu_read_lock(&kfd_processes_srcu);
+		pr_debug("cancel restore_userptr_work\n");
+		hash_for_each_rcu(kfd_processes_table, temp, p, kfd_processes) {
+			if ( kfd_process_gpuidx_from_gpuid(p, kfd->id) >= 0 ) {
+				p_info = p->kgd_process_info;
+				pr_debug("cancel processes, pid = %d for gpu_id = %d", pid_nr(p_info->pid), kfd->id);
+				cancel_delayed_work_sync(&p_info->restore_userptr_work);
+				/* block all future restore_userptr_work */
+				atomic_inc(&p_info->invalid);
+			}
+		}
+		srcu_read_unlock(&kfd_processes_srcu, idx);
 	}
 
 	kfd->dqm->ops.stop(kfd->dqm);

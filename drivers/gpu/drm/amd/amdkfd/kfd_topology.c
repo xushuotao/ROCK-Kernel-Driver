@@ -669,11 +669,12 @@ static void kfd_remove_sysfs_node_entry(struct kfd_topology_device *dev)
 #ifdef HAVE_AMD_IOMMU_PC_SUPPORTED
 	if (dev->kobj_perf) {
 		list_for_each_entry(perf, &dev->perf_props, list) {
+			sysfs_remove_group(dev->kobj_perf, perf->attr_group);
 			kfree(perf->attr_group);
 			perf->attr_group = NULL;
 		}
 		kobject_del(dev->kobj_perf);
-		kobject_put(dev->kobj_perf);
+		/* kobject_put(dev->kobj_perf); */
 		dev->kobj_perf = NULL;
 	}
 #endif

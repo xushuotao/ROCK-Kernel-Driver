@@ -2518,7 +2518,6 @@ void amdgpu_ras_late_fini(struct amdgpu_device *adev,
 	if (!ras_block || !ih_info)
 		return;
 
-	amdgpu_ras_sysfs_remove(adev, ras_block);
 	if (ih_info->cb)
 		amdgpu_ras_interrupt_remove_handler(adev, ih_info);
 }
@@ -2577,6 +2576,7 @@ void amdgpu_ras_suspend(struct amdgpu_device *adev)
 int amdgpu_ras_pre_fini(struct amdgpu_device *adev)
 {
 	struct amdgpu_ras *con = amdgpu_ras_get_context(adev);
+	struct ras_manager *obj, *tmp;
 
 	if (!adev->ras_enabled || !con)
 		return 0;
@@ -2585,6 +2585,13 @@ int amdgpu_ras_pre_fini(struct amdgpu_device *adev)
 	/* Need disable ras on all IPs here before ip [hw/sw]fini */
 	amdgpu_ras_disable_all_features(adev, 0);
 	amdgpu_ras_recovery_fini(adev);
+
+	/* remove sysfs before pci_remove to avoid OOPSES from sysfs_remove_groups */
+	list_for_each_entry_safe(obj, tmp, &con->head, node) {
+		amdgpu_ras_sysfs_remove(adev, &obj->head);
+		put_obj(obj);
+	}
+
 	return 0;
 }
 
